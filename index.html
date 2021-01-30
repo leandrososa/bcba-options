@@ -1,0 +1,112 @@
+<html lang="es">
+  <head>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:ital,wght@0,400;0,700;1,400;1,700&display=swap" rel="stylesheet">
+    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+    <script type="text/javascript" src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <style>
+      body{
+
+        background-color: #1c1c1c;
+      }
+    </style>
+    <script type="text/javascript">
+      google.charts.load('current', {'packages':['corechart']});
+      google.charts.setOnLoadCallback(drawChart);
+
+    var json = (function() {
+        var json = null;
+        $.ajax({
+            'async': false,
+            'global': false,
+            'url': "calls-ggal.json",
+            'dataType': "json",
+            'success': function(data) {
+            json = data;
+            }
+        });
+        return json;
+    })();
+
+    var datos = [['Nombre','Vencimiento', 'Precio ejercicio', 'Volumen', 'Prima']]
+
+      jQuery.each(json, function(i, val) {
+          datos.push([String(val.precioejercicio), new Date(val.vencimiento), val.precioejercicio, val.volumenmonto, val.ltimoprecioprima])
+        //console.log(val.vencimiento);
+        });
+
+      function drawChart() {
+        var data = google.visualization.arrayToDataTable(datos);
+
+        var options = {
+          fontName: 'Rubik',
+          backgroundColor: '#1c1c1c',
+          bubble: {
+            textStyle: {
+              color: '#fff',
+              fontSize: 12
+            }
+          },
+          color: 'red',
+          colorAxis:{
+            colors: ['#333', '#00e205'],
+            legend: {
+              position: 'none'}
+          },
+          hAxis: {
+            title: 'Vencimiento',
+            titleTextStyle: {
+              color: '#ffffff'
+            },
+            textStyle: {
+              color: '#eeeeee'
+            },
+            baselineColor: '#fcfcfc',
+            gridlines: {
+              color: '#666'
+            },
+            minorGridlines: {
+              color: 'transparent'
+            }
+          },
+          vAxis: {
+            title: 'Precio ejercicio',
+            titleTextStyle: {
+              color: '#ffffff'
+            },
+            textStyle: {
+              color: '#eeeeee'
+            },
+            baselineColor: '#ffffff',
+            gridlines: {
+              color: '#666'
+            }
+          },
+          legend: 'none',
+          sizeAxis: {
+              minSize: 2
+          },
+          chartArea: {
+            top: 40,
+            left: 80,
+            height: '85%',
+            width: '95%'
+          }
+        };
+
+        var chart = new google.visualization.BubbleChart(document.getElementById('chart_div'));
+
+        chart.draw(data, options);
+      }
+
+
+      setInterval(function() {
+        location.reload();
+
+      }, 60000);
+      
+    </script>
+  </head>
+  <body>
+    <div id="chart_div" style="width: 100%; height: 100%"></div>
+  </body>
+</html>
