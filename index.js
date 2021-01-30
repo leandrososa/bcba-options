@@ -1,21 +1,16 @@
 const request = require("request-promise");
-const cheerio = require("cheerio"); // Libreria simil jQuery
-const fs = require('fs'); // Modulo de node para el sistema de archivos
+const cheerio = require("cheerio");
+const fs = require('fs'); // Node file system module
 
-/* async function main() {
- const result = await request.get("https://www.allaria.com.ar/Opcion");
- const $ = cheerio.load(result);
- $("table tr.GGAL td:first-child").each((index, element) => {
-   console.log($(element).text());
- });
-}  */
+const URL_TO_SCRAPE = "https://www.allaria.com.ar/Opcion";
  
-async function main() {
-    const result = await request.get("https://www.allaria.com.ar/Opcion");
+async function main(underlying) {
+    const result = await request.get(URL_TO_SCRAPE);
     const $ = cheerio.load(result);
     const scrapedData = [];
     const tableHeaders = [];
-    $("table#tableOpcionesAcciones > thead > tr, table#tableOpcionesAcciones > tbody > tr.GGAL.accion-Call").each((index, element) => {
+
+    $(`table#tableOpcionesAcciones > thead > tr, table#tableOpcionesAcciones > tbody > tr.${underlying}.accion-Call`).each((index, element) => {
       if (index === 0) {
         const ths = $(element).find("th:nth-child(4), th:nth-child(5), th:nth-child(6), th:nth-child(13)");
         $(ths).each((i, element) => {
@@ -29,7 +24,8 @@ async function main() {
         });
         return true;
       }
-      const tds = $(element).find("td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(13)");
+
+      const tds = $(element).find("td:nth-child(4), td:nth-child(5), td:nth-child(6), td:nth-child(13)"); // Get desired grid fields
       const tableRow = {};
       $(tds).each((i, element) => {
         //tableRow[tableHeaders[i]] = $(element).text().replace(/\s/g,'');
@@ -65,10 +61,8 @@ async function main() {
     console.log("Esperando próxima ejecucion");
    }
 
-//main();
-
 main();
 
-setInterval(function() {
-  main();
+setInterval(function() { //Redo every minute
+  main('GGAL');
 }, 300000);
