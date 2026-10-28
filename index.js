@@ -1,12 +1,16 @@
-const request = require("request-promise");
 const cheerio = require("cheerio");
-const fs = require('fs'); // Node file system module
+const fs = require("fs");
+const path = require("path");
 
 const URL_TO_SCRAPE = "https://www.allaria.com.ar/Opcion";
+const FIXTURE_PATH = path.join(__dirname, "fixtures", "opciones-demo.html");
+
+function parseSpanishNumber(value) {
+  return Number.parseFloat(value.replace(/\s/g, "").replace(/\./g, "").replace(",", "."));
+}
  
-async function main(underlying) {
-    const result = await request.get(URL_TO_SCRAPE);
-    const $ = cheerio.load(result);
+function scrapeOptions(html, underlying = "GGAL") {
+    const $ = cheerio.load(html);
     const scrapedData = [];
     const tableHeaders = [];
 
@@ -17,6 +21,8 @@ async function main(underlying) {
           tableHeaders.push(
             $(element)
               .text()
+              .normalize("NFD")
+              .replace(/[\u0300-\u036f]/g, "")
               .toLowerCase()
               .replace(/\s/g,'')
               .replace(/[^a-zA-Z ]/g, "")
@@ -29,28 +35,40 @@ async function main(underlying) {
       const tableRow = {};
       $(tds).each((i, element) => {
         //tableRow[tableHeaders[i]] = $(element).text().replace(/\s/g,'');
+        const cellValue = $(element).text();
         if (i === 0) {
-          var arrayFecha =  $(element).text().replace(/\s/g,'').split("/", 3);
+          const arrayFecha = cellValue.replace(/\s/g,'').split("/", 3);
           tableRow[tableHeaders[i]] = arrayFecha[2] + '-' + arrayFecha[1] + '-' + arrayFecha[0];
-          //tableRow[tableHeaders[i]] = new Date(arrayFecha[2], parseInt(arrayFecha[1]) - 1, arrayFecha[0]);
-          //tableRow[tableHeaders[i]] = $(element).text().replace(/\s/g,'');
-        }else if (i === 1){
-          var stringBase = $(element).text().replace(/\s/g,'');
-          tableRow[tableHeaders[i]] = parseInt(stringBase);
-        }else if (i == 2){
-          var stringBase2 = $(element).text().replace(/\s/g,'').replace(',','.');
-          tableRow[tableHeaders[i]] = parseFloat(stringBase2);
         } else {
-          var stringBase3 = $(element).text().replace(/\s/g,'').replace('.','').replace('.','').replace(',','.');
-          tableRow[tableHeaders[i]] = parseFloat(stringBase3);
-
+          tableRow[tableHeaders[i]] = parseSpanishNumber(cellValue);
         }
       });
       scrapedData.push(tableRow);
     });
-    //console.log(scrapedData);
-    let data = JSON.stringify(scrapedData);
-    fs.writeFileSync('calls-ggal.json', data);
+    return scrapedData;
+}
+
+async function getPageHtml(useFixture = false) {
+  if (useFixture) {
+    return fs.readFileSync(FIXTURE_PATH, "utf8");
+  }
+
+  const response = await fetch(URL_TO_SCRAPE, {
+    headers: {
+      "User-Agent": "Mozilla/5.0 (compatible; bcba-options/1.0)",
+      Accept: "text/html,application/xhtml+xml",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`No se pudo obtener ${URL_TO_SCRAPE}: ${response.status} ${response.statusText}`);
+  }
+
+  return response.text();
+}
+
+async function main(underlying = "GGAL", useFixture = false, outputPath = "calls-ggal.json") {
+    const scrapedData = scrapeOptions(await getPageHtml(useFixture), underlying);
+    fs.writeFileSync(outputPath, JSON.stringify(scrapedData));
 
     let date_ob = new Date();
     let hours = date_ob.getHours();
@@ -59,10 +77,23 @@ async function main(underlying) {
     console.log('\x1b[33m%s\x1b[0m', hours + ":" + minutes);
     console.log('\x1b[36m%s\x1b[0m', 'Archivo JSON generado');
     console.log("Esperando próxima ejecucion");
-   }
+}
 
-main();
+if (require.main === module) {
+  const useFixture = process.argv.includes("--fixture");
+  const runOnce = process.argv.includes("--once");
+  const outputPath = useFixture ? "calls-ggal.sample.json" : "calls-ggal.json";
 
-setInterval(function() { //Redo every minute
-  main('GGAL');
-}, 300000);
+  main("GGAL", useFixture, outputPath).catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+
+  if (!runOnce) {
+    setInterval(() => { // Redo every five minutes
+      main("GGAL", useFixture, outputPath).catch((error) => console.error(error));
+    }, 300000);
+  }
+}
+
+module.exports = { getPageHtml, main, scrapeOptions };
