@@ -1,17 +1,20 @@
 {
   "name": "tasa-ggal-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Extractor de opciones de BCBA",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node --test",
+    "start": "node index.js",
+    "generate:sample": "node index.js --fixture --once"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "cheerio": "^1.0.0-rc.3",
-    "request": "^2.88.2",
-    "request-promise": "^4.2.6"
+    "cheerio": "^1.2.0"
+  },
+  "engines": {
+    "node": ">=20.18.1"
   }
 }
